@@ -47,7 +47,14 @@ jobs:
       - name: Patch the Android project
         working-directory: shesafe
         run: python3 tools/prepare_android.py app
-
+        
+      - name: Raise compileSdk
+        working-directory: shesafe/app/android/app
+        run: |
+          sed -i -E 's/compileSdk(Version)? *= *flutter\.compileSdkVersion/compileSdk = 36/' build.gradle.kts 2>/dev/null || true
+          sed -i -E 's/compileSdk(Version)? +flutter\.compileSdkVersion/compileSdkVersion 36/' build.gradle 2>/dev/null || true
+          grep -n compileSdk build.gradle*
+          
       - name: Build the APK
         working-directory: shesafe/app
         run: |
