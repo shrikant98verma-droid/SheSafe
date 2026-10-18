@@ -11,6 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Unpack SheSafe
+        run: unzip -q shesafe.zip
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -22,8 +25,8 @@ jobs:
           cache: true
 
       - name: Create the Flutter project and copy SheSafe into it
+        working-directory: shesafe
         run: |
-          cd shesafe
           flutter create --org com.shesafe --project-name shesafe app
           rm -rf app/lib app/test
           cp -r lib app/lib
@@ -35,17 +38,18 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            printf '%s' "$GOOGLE_SERVICES_JSON" > app/android/app/google-services.json
+            printf '%s' "$GOOGLE_SERVICES_JSON" > shesafe/app/android/app/google-services.json
             echo "Firebase enabled"
           else
             echo "No GOOGLE_SERVICES_JSON secret: building in demo mode"
           fi
 
       - name: Patch the Android project
+        working-directory: shesafe
         run: python3 tools/prepare_android.py app
 
       - name: Build the APK
-        working-directory: app
+        working-directory: shesafe/app
         run: |
           flutter pub get
           flutter build apk --release
@@ -53,4 +57,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: shesafe-apk
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          path: shesafe/app/build/app/outputs/flutter-apk/app-release.apk
