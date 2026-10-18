@@ -1,0 +1,55 @@
+name: Build SheSafe APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create the Flutter project and copy SheSafe into it
+        run: |
+          flutter create --org com.shesafe --project-name shesafe app
+          rm -rf app/lib app/test
+          cp -r lib app/lib
+          cp -r assets app/assets
+          cp pubspec.yaml app/pubspec.yaml
+
+      - name: Add Firebase config (optional)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > app/android/app/google-services.json
+            echo "Firebase enabled"
+          else
+            echo "No GOOGLE_SERVICES_JSON secret: building in demo mode"
+          fi
+
+      - name: Patch the Android project
+        run: python3 tools/prepare_android.py app
+
+      - name: Build the APK
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shesafe-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
