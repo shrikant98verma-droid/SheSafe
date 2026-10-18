@@ -54,6 +54,19 @@ jobs:
           sed -i -E 's/compileSdk(Version)? *= *flutter\.compileSdkVersion/compileSdk = 36/' build.gradle.kts 2>/dev/null || true
           sed -i -E 's/compileSdk(Version)? +flutter\.compileSdkVersion/compileSdkVersion 36/' build.gradle 2>/dev/null || true
           grep -n compileSdk build.gradle*
+              
+      - name: Force newer compileSdk for all plugins
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/compilesdk.gradle << 'EOF'
+          allprojects {
+              afterEvaluate { p ->
+                  if (p.hasProperty('android')) {
+                      p.android.compileSdkVersion 36
+                  }
+              }
+          }
+          EOF 
           
       - name: Build the APK
         working-directory: shesafe/app
