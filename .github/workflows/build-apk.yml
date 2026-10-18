@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Unpack SheSafe
-        run: unzip -q shesafe.zip
+        run: unzip -q "$(ls *.zip | head -1)"
 
       - uses: actions/setup-java@v4
         with:
