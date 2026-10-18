@@ -23,6 +23,7 @@ jobs:
 
       - name: Create the Flutter project and copy SheSafe into it
         run: |
+          cd shesafe
           flutter create --org com.shesafe --project-name shesafe app
           rm -rf app/lib app/test
           cp -r lib app/lib
