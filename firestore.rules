@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Her profile: only she can read or change it. The Cloud Function uses the
+    // admin SDK, which ignores these rules.
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /sos/{sosId} {
+
+      function sos() {
+        return get(/databases/$(database)/documents/sos/$(sosId)).data;
+      }
+
+      function isOwner() {
+        return request.auth.uid == sos().ownerUid;
+      }
+
+      // Listed contacts are matched by the phone number they signed in with.
+      function isContact() {
+        return request.auth.token.phone_number in sos().contactPhones;
+      }
+
+      // A nearby woman who tapped "I can help" (added by the Cloud Function).
+      function isHelper() {
+        return request.auth.uid in sos().helperUids;
+      }
+
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow read: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid ||
+        request.auth.token.phone_number in resource.data.contactPhones ||
+        request.auth.uid in resource.data.helperUids
+      );
+
+      // Her live position.
+      match /live/{doc} {
+        allow write: if signedIn() && isOwner();
+        allow read: if signedIn() && (isOwner() || isContact() || isHelper());
+      }
+
+      // "Seen / on the way / calling". The responder writes their own document.
+      match /responses/{uid} {
+        allow read: if signedIn() && (isOwner() || request.auth.uid == uid);
+        allow create, update: if signedIn() && request.auth.uid == uid && (
+          (request.resource.data.role == 'family' && isContact()) ||
+          (request.resource.data.role == 'nearby' &&
+            request.auth.uid in sos().nearbyUids)
+        );
+      }
+    }
+  }
+}
